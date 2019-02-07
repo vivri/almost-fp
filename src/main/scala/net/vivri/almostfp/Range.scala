@@ -28,22 +28,22 @@ trait Range[T] {
 
 object Range {
 
-  def of[B <: Range[T], T](bounds: B)(value: T): RangeBelonging[B, T] = {
-    bounds.rules.foldLeft(List.empty[String]) { (acc, constraint) =>
+  def of[R <: Range[T], T](range: R)(value: T): RangeBelonging[R, T] = {
+    range.rules.foldLeft(List.empty[String]) { (acc, constraint) =>
       if (!constraint._2(value))
       constraint._1 :: acc
       else
       acc
     } match {
-      case Nil      => Range.In[B, T](value)
-      case failures => Range.Out[B, T](failures)
+      case Nil      => Range.In[R, T](value)
+      case failures => Range.Out[R, T](failures)
     }
   }
 
 
-  sealed trait RangeBelonging[B <: Range[T], T]
-  case class In[B <: Range[T], T](value: T) extends RangeBelonging[B, T]
-  case class Out[B <: Range[T], T](violations: Seq[String]) extends RangeBelonging[B, T]
+  sealed trait RangeBelonging[R <: Range[T], T]
+  case class In[R <: Range[T], T](value: T) extends RangeBelonging[R, T]
+  case class Out[R <: Range[T], T](violations: Seq[String]) extends RangeBelonging[R, T]
 
   /**
     * Extend to always belong
