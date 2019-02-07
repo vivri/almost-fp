@@ -4,9 +4,9 @@ package net.vivri.almostfp
   * A somewhat lightweight, typesafe refinement/validation/constraint-satisfaction ("Narrowing") library.
   *
   * The benefit here is that you:
-  * 1) Get to keep the type of validation you've used
-  * 2) Only calculate once, keep the results forever!
-  * 3) Don't carry around references to the rules you've used to restrict it
+  * 1) Get to keep the type of validation you've used.
+  * 2) Only calculate once, keep the results forever.
+  * 3) Don't carry around references to the rules you've used to restrict it.
   *
   * Example usage from imaginary spec (passes):
   *
@@ -20,14 +20,14 @@ package net.vivri.almostfp
   *    val onlyOne = Narrow.downTo[OnlyOne.type, Int](OnlyOne) _
   *
   *    onlyOne(0) shouldBe Narrow.Err(Seq("Positive"))
-  *    onlyOne(1) shouldBe Narrow.Down(1)
+  *    onlyOne(1) shouldBe Narrow.Type(1)
   *    onlyOne(2) shouldBe Narrow.Err(Seq("Less than 2"))
   *
-  *    onlyOne(1).isInstanceOf[Narrow.Of[OnlyOne.type, Int]] shouldBe true
+  *    onlyOne(1).isInstanceOf[Narrow.Type[OnlyOne.type, Int]] shouldBe true
   *    onlyOne(0).isInstanceOf[Narrow.Err[OnlyOne.type, Int]] shouldBe true
   *
   *    onlyOne(1) match {
-  *      case Narrow.Down(i) => i.isInstanceOf[Int] shouldBe true
+  *      case Narrow.Type(i) => i.isInstanceOf[Int] shouldBe true
   *      case Narrow.Err(violations) => throw new RuntimeException("BOOM!")
   *    }
   */
@@ -45,13 +45,13 @@ object Narrow {
       else
       acc
     } match {
-      case Nil      => Narrow.Down[R, T](value)
+      case Nil      => Narrow.Type[R, T](value)
       case failures => Narrow.Err[R, T](failures)
     }
   }
 
   sealed trait Belonging[R <: Narrow[T], T]
-  case class Down[R <: Narrow[T], T](value: T) extends Belonging[R, T]
+  case class Type[R <: Narrow[T], T](value: T) extends Belonging[R, T]
   case class Err[R <: Narrow[T], T](violations: Seq[String]) extends Belonging[R, T]
 
   /**
