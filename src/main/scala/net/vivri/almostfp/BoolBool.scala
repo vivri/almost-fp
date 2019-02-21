@@ -49,7 +49,7 @@ import scala.util.Try
       val firstName = NameRule & ~BadNameRule
       type FirstName = firstName.B ^ firstName.V
 
-      val lastName = NameRule & ~BadNameRule & (ScottishLastName | JewishLastName)
+      val lastName = firstName & (ScottishLastName | JewishLastName)
       type LastName = lastName.B ^ lastName.V
 
       type DbId = DbIdRule.B ^ DbIdRule.V

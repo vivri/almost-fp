@@ -114,7 +114,7 @@ Our example, with a few pretty cool rules thrown in there to showcase the algebr
   val firstName = NameRule & ~BadNameRule
   type FirstName = firstName.B ^ firstName.V
 
-  val lastName = NameRule & ~BadNameRule & (ScottishLastName | JewishLastName)
+  val lastName = firstName & (ScottishLastName | JewishLastName)
   type LastName = lastName.B ^ lastName.V
 
   case class Person (id: Option[DbId], firstName: FirstName, lastName: LastName)
