@@ -10,9 +10,9 @@ package net.vivri.almostfp
   * Note that the effect isn't guarded, and can throw a Throwable.
   *
   */
-object SideEffect {
+object SideFlow {
 
-  implicit class SideEffect[T](inner: T) {
+  implicit class SideFlowExt[T](inner: T) {
     /**
       * Performs a side effect within the context of the caller reference, returning that same reference.
       *

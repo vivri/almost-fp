@@ -4,10 +4,10 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.mutable
 
-class SideEffectSpec extends FlatSpec with Matchers {
+class SideFlowSpec extends FlatSpec with Matchers {
 
   it should "return the same object" in {
-    import SideEffect._
+    import SideFlow._
 
     val obj = Some(1)
 
@@ -17,7 +17,7 @@ class SideEffectSpec extends FlatSpec with Matchers {
   }
 
   it should "maintain method equivalence" in {
-    import SideEffect._
+    import SideFlow._
 
     val x = Some(1)
 
@@ -26,7 +26,7 @@ class SideEffectSpec extends FlatSpec with Matchers {
   }
 
   it should "perform the side effect" in {
-    import SideEffect._
+    import SideFlow._
 
     var x = false
 
@@ -36,7 +36,7 @@ class SideEffectSpec extends FlatSpec with Matchers {
   }
 
   it should "perform a side-effect on the initial object, if mutable" in {
-    import SideEffect._
+    import SideFlow._
 
     var x = mutable.Set.empty[Int]
 
