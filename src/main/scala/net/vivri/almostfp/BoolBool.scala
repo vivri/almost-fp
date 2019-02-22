@@ -1,6 +1,6 @@
 package net.vivri.almostfp
 
-import net.vivri.almostfp.?!.{^, !!}
+import net.vivri.almostfp.?^.{^, ~^}
 
 import scala.util.Try
 
@@ -80,7 +80,7 @@ sealed trait BoolBool[T] {
 
   def X (expr: BoolBool[T]): BoolBool[T]
 
-  def ?! (v: T): ?![B,T]
+  def ?^ (v: T): ?^[B,T]
 }
 
 object BoolBool {
@@ -122,9 +122,9 @@ object BoolBool {
 
     val rule: BoolBool.Rule[T]
 
-    override def ?! (value: T): ?![B,T] = rule(value) match {
+    override def ?^ (value: T): ?^[B,T] = rule(value) match {
       case true  => ^(this, value)
-      case false => !!(this, value)
+      case false => ~^(this, value)
     }
 
     def unary_~ : BoolBool[T] = NOT(id)
@@ -149,31 +149,31 @@ object BoolBool {
 
   case class T[Q]() extends Expr[Q] {
     override type B = this.type
-    override def ?!(v: Q) = ^(this, v)
+    override def ?^(v: Q) = ^(this, v)
     override val pprint: String = "Q"
   }
 
   case class F[Q]() extends Expr[Q] {
     override type B = this.type
-    override def ?!(v: Q) = !!(this, v)
+    override def ?^(v: Q) = ~^(this, v)
     override val pprint: String = "F"
   }
 
   case class ID[T](constraint: Narrow[T]) extends Expr[T] {
     override type B = this.type
-    override def ?!(v: T) =
+    override def ?^(v: T) =
       if (constraint rule v) ^(this, v)
-      else                   !!(this, v)
+      else                   ~^(this, v)
 
     override val pprint: String = constraint.toString
   }
 
   case class NOT[T](expr: Expr[T]) extends Expr[T] {
     override type B = this.type
-    override def ?!(v: T) = {
-      expr ?! v match {
-        case ^(_,v)   => !!(this, v)
-        case !!(_,v) => ^(this, v)
+    override def ?^(v: T) = {
+      expr ?^ v match {
+        case ^(_,v)  => ~^(this, v)
+        case ~^(_,v) => ^(this, v)
       }
     }
 
@@ -182,10 +182,10 @@ object BoolBool {
 
   case class OR[T](exprA: Expr[T], exprB: Expr[T]) extends Expr[T] {
     override type B = this.type
-    override def ?!(v: T) =
-      (exprA ?! v, exprB ?! v) match {
-        case (!!(_,_), !!(_,_)) =>
-          !!(this, v)
+    override def ?^(v: T) =
+      (exprA ?^ v, exprB ?^ v) match {
+        case (~^(_,_), ~^(_,_)) =>
+          ~^(this, v)
         case _ =>
           ^(this,v)
       }
@@ -195,12 +195,12 @@ object BoolBool {
 
   case class AND[T](exprA: Expr[T], exprB: Expr[T]) extends Expr[T] {
     override type B = this.type
-    override def ?!(v: T) =
-      (exprA ?! v, exprB ?! v) match {
+    override def ?^(v: T) =
+      (exprA ?^ v, exprB ?^ v) match {
         case (^(_,_), ^(_,_)) =>
           ^(this, v)
         case _ =>
-          !!(this,v)
+          ~^(this,v)
       }
 
     override val pprint: String = s"(${exprA.pprint} & ${exprB.pprint})"
@@ -208,12 +208,12 @@ object BoolBool {
 
   case class XOR[T](exprA: Expr[T], exprB: Expr[T]) extends Expr[T] {
     override type B = this.type
-    override def ?!(v: T) = {
-      (exprA ?! v, exprB ?! v) match {
+    override def ?^(v: T) = {
+      (exprA ?^ v, exprB ?^ v) match {
         case (^(_,_), ^(_,_)) =>
-          !!(this, v)
-        case (!!(_,_), !!(_,_)) =>
-          !!(this, v)
+          ~^(this, v)
+        case (~^(_,_), ~^(_,_)) =>
+          ~^(this, v)
         case _ =>
           ^(this,v)
       }
@@ -226,37 +226,37 @@ object BoolBool {
 /**
   * Represents the application of a BoolBool algebraic expression to a value.
   */
-sealed trait ?![B <: BoolBool[T], T] {
+sealed trait ?^[B <: BoolBool[T], T] {
   val constraint: B
   val value: T
   val pprint: String
   val isMember: Boolean
 
-  lazy val lift : Either[!![B,T], ^[B,T]] = isMember match {
+  lazy val lift : Either[~^[B,T], ^[B,T]] = isMember match {
     case true => Right(^(constraint,value))
-    case false => Left(!!(constraint,value))
+    case false => Left(~^(constraint,value))
   }
 
   override def toString: String = pprint
 
   override def equals(o: scala.Any): Boolean =
-    Try { o.asInstanceOf[?![B,T]].pprint == pprint } getOrElse false
+    Try { o.asInstanceOf[?^[B,T]].pprint == pprint } getOrElse false
 
   override def hashCode(): Int = pprint.hashCode
 }
 
-object ?! {
+object ?^ {
 
-  def apply[B <: BoolBool[T], T](constraint: B, value: T): ?![constraint.B, T] = constraint ?! value
+  def apply[B <: BoolBool[T], T](constraint: B, value: T): ?^[constraint.B, T] = constraint ?^ value
 
-  def unapply[B <: BoolBool[T], T](arg: ?![B,T]): Option[(B,T)] = Some((arg.constraint,arg.value))
+  def unapply[B <: BoolBool[T], T](arg: ?^[B,T]): Option[(B,T)] = Some((arg.constraint,arg.value))
 
-  case class ^[B <: BoolBool[T], T] private[?!] (constraint: B, value: T) extends ?![B, T] {
+  case class ^[B <: BoolBool[T], T] private[?^] (constraint: B, value: T) extends ?^[B, T] {
     override val pprint: String = s"{ $value ∈ ${constraint.toString} }"
     override val isMember: Boolean = true
   }
 
-  case class !![B <: BoolBool[T], T] private[?!] (constraint: B, value: T) extends ?![B, T] {
+  case class ~^[B <: BoolBool[T], T] private[?^] (constraint: B, value: T) extends ?^[B, T] {
     override val pprint: String = s"{ $value ∉ ${constraint.toString} }"
     override val isMember: Boolean = false
   }

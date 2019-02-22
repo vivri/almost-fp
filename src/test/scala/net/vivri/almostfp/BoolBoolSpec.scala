@@ -1,6 +1,6 @@
 package net.vivri.almostfp
 
-import net.vivri.almostfp.?!.{!!, ^}
+import net.vivri.almostfp.?^.{~^, ^}
 import net.vivri.almostfp.BoolBool.{Narrow, Rule}
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -14,10 +14,10 @@ class BoolBoolSpec extends FreeSpec with Matchers {
 
       val breadPitt = Bread & Pitt
 
-      breadPitt ?! "abReaDpItTs" shouldBe ^(breadPitt, "abReaDpItTs")
-      breadPitt ?! "PiTT BREaD"  shouldBe ^(Bread & Pitt, "PiTT BREaD")
+      breadPitt ?^ "abReaDpItTs" shouldBe ^(breadPitt, "abReaDpItTs")
+      breadPitt ?^ "PiTT BREaD"  shouldBe ^(Bread & Pitt, "PiTT BREaD")
 
-      breadPitt ?! "pita bread" shouldBe !!(Bread & Pitt, "pita bread")
+      breadPitt ?^ "pita bread" shouldBe ~^(Bread & Pitt, "pita bread")
     }
 
     "Usage example" in {
@@ -59,7 +59,7 @@ class BoolBoolSpec extends FreeSpec with Matchers {
       case class Person (id: Option[DbId], firstName: FirstName, lastName: LastName)
 
       val person =
-        (DbIdRule ?! 123 lift, firstName ?! "Bilbo" lift, lastName ?! "McBeggins" lift) match {
+        (DbIdRule ?^ 123 lift, firstName ?^ "Bilbo" lift, lastName ?^ "McBeggins" lift) match {
           case (Right(id), Right(firstName), Right(lastName)) => Person(Some(id), firstName, lastName)
           case _ => throw new Exception
         }
