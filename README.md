@@ -38,7 +38,7 @@ Most importantly, __it saves you lines, and makes things pretty__!
 
 There is alternative syntax for Linux-lovers (`tee`) and for symbol-haters (`eff`).
 
-### [BoolBool](https://github.com/vivri/almost-fp/blob/master/src/main/scala/net/vivri/almostfp/BoolBool.scala)
+### [Narrow](https://github.com/vivri/almost-fp/blob/master/src/main/scala/net/vivri/almostfp/Narrow.scala)
 
 Scala [does not have full-fledged dependent-types](https://www.infoq.com/presentations/scala-idris),
 so we cannot natively have the niceness of `PositiveInteger`, `NonEmptyList`, and `StringOfLength19StartingWithXXX`.
@@ -76,9 +76,9 @@ We may start defensively validating it across service-boundaries, not knowing wh
 Worse, once we've validated (procedurally), the domain knowledge of the _narrow_ types of `id, name` is forever 
 lost to us. This is information that could, _should_ live on the type level!
 
-__`BoolBool` to the rescue!__
+__`Narrow` to the rescue!__
 
-`BoolBool` allows us to declare business-rules using composable Boolean Algebra, check them once, and 
+`Narrow` allows us to declare business-rules using composable Boolean Algebra, check them once, and 
 _tie them to a type_, which will forever live in the codebase, as compiled documentation of the specification!
 
 Our example, with a few pretty cool rules thrown in there to showcase the algebra:
