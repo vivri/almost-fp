@@ -1,23 +1,23 @@
 package net.vivri.almostfp
 
 import net.vivri.almostfp.?^.{^, ~^}
-import net.vivri.almostfp.BoolBool.><
+import net.vivri.almostfp.Narrow.><
 import org.scalatest.{FreeSpec, Matchers}
 
-class BoolBoolSpec extends FreeSpec with Matchers {
+class NarrowSpec extends FreeSpec with Matchers {
 
-  "BoolBool" - {
+  "Narrow" - {
     "it should respect boundaries" in {
 
-      case object Bread extends ><[String] ((x: String) => x.toLowerCase.contains("bread"))
-      case object Pitt  extends ><[String] ((x: String) => x.toLowerCase.contains("pitt"))
+      case object Bread extends ><[String] (_.toLowerCase.contains("bread"))
+      case object Pitt  extends ><[String] (_.toLowerCase.contains("pitt"))
 
       val breadPitt = Bread & Pitt
 
       breadPitt ?^ "abReaDpItTs" shouldBe ^(breadPitt, "abReaDpItTs")
       breadPitt ?^ "PiTT BREaD"  shouldBe ^(Bread & Pitt, "PiTT BREaD")
 
-      breadPitt ?^ "pita bread" shouldBe ~^(Bread & Pitt, "pita bread")
+      breadPitt ?^ "pita bread" shouldBe ~^(breadPitt, "pita bread")
     }
   }
 
@@ -26,7 +26,7 @@ class BoolBoolSpec extends FreeSpec with Matchers {
     object OurOntology {
       // `><[T] ((t: T) => Boolean)` is the building block of our boolean type algebra
       // read `><[Int]` as `narrowing int`
-      case object DbId              extends ><[Int]    (id => 0 <= id && id < 2000000)
+      case object DbId              extends ><[Int]    ((id)=> 0 <= id && id < 2000000)
       case object Name              extends ><[String] (_.matches("^[A-Z][a-zA-Z]{1,31}$"))
       case object BadName           extends ><[String] (_.toLowerCase.contains("badword"))
       case object ScottishLastName  extends ><[String] (_ startsWith "Mc")
@@ -37,16 +37,16 @@ class BoolBoolSpec extends FreeSpec with Matchers {
       val LastNameRule = FirstNameRule & (ScottishLastName | JewishLastName)
     }
 
-    import ?^.DSL._
-    import OurOntology._ // so we can use the convenient ~ operator
+    import ?^.DSL._ // so we can use the convenient ~ operator
+    import OurOntology._
 
     // Our Domain is now ready to be used in ADTs and elsewhere.
     case class Person (id: DbId.^^, firstName: FirstNameRule.^^, lastName: LastNameRule.^^)
 
     // We string together the inputs, to form an easily-accessible data structure:
-    // Either (set of failures, tuple of successes)
+    // Either (set of failures, tuple of successes in order of evaluation)
     val validatedInput =
-      (DbId      ?^ 123) ~
+      (DbId          ?^ 123) ~
       (FirstNameRule ?^ "Bilbo") ~
       (LastNameRule  ?^ "McBeggins")
 
@@ -79,9 +79,9 @@ class BoolBoolSpec extends FreeSpec with Matchers {
 
   "Generate ~ DSL (copy and paste in ?^.DSL)" ignore {
 
-    def genBs (i: Int) = (1 to i) map { n => s"B$n <: BoolBool[T$n]" } mkString ","
+    def genBs (i: Int) = (1 to i) map { n => s"N$n <: Narrow[T$n]" } mkString ","
     def genTs (i: Int) = (1 to i) map { n => s"T$n" } mkString ","
-    def genTup (i: Int) = "(" + ( (1 to i) map { n => s"^[B$n,T$n]"} mkString ",") + ")"
+    def genTup (i: Int) = "(" + ( (1 to i) map { n => s"^[N$n,T$n]"} mkString ",") + ")"
     def genABC (i: Int) = (('a' to 'z') take i) mkString ","
     def letter (i: Int) = 'a' + (i-1) toChar
 
@@ -90,9 +90,9 @@ class BoolBoolSpec extends FreeSpec with Matchers {
       println (
         s"""
            |implicit class Tup${i}[${genBs(i)},${genTs(i)}] (v: Either[Set[~^[_,_]], ${genTup(i)}]) {
-           |  def ~ [B$j <: BoolBool[T$j], T$j] (next: ?^[B$j,T$j]): Either[Set[~^[_,_]], ${genTup(j)}] =
+           |  def ~ [N$j <: Narrow[T$j], T$j] (next: ?^[N$j,T$j]): Either[Set[~^[_,_]], ${genTup(j)}] =
            |    (v, next) match {
-           |      case (Right((${genABC(i)})), ${letter(j)}: ^[B$j,T$j]) => Right((${genABC(j)}))
+           |      case (Right((${genABC(i)})), ${letter(j)}: ^[N$j,T$j]) => Right((${genABC(j)}))
            |      case (Left(fails), x) => Left(fails ++ ?^.failAsSet(x))
            |      case (Right(_), x)    => Left(?^.failAsSet(x))
            |    }
