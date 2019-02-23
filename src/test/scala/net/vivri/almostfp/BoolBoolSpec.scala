@@ -1,7 +1,7 @@
 package net.vivri.almostfp
 
-import net.vivri.almostfp.?^.{~^, ^}
-import net.vivri.almostfp.BoolBool.{Narrow, Rule}
+import net.vivri.almostfp.?^.{^, ~^}
+import net.vivri.almostfp.BoolBool.><
 import org.scalatest.{FreeSpec, Matchers}
 
 class BoolBoolSpec extends FreeSpec with Matchers {
@@ -9,8 +9,8 @@ class BoolBoolSpec extends FreeSpec with Matchers {
   "BoolBool" - {
     "it should respect boundaries" in {
 
-      case object Bread extends Narrow[String] { override val rule = (x: String) => x.toLowerCase.contains("bread") }
-      case object Pitt extends Narrow[String] { override val rule =  (x: String) => x.toLowerCase.contains("pitt") }
+      case object Bread extends ><[String] ((x: String) => x.toLowerCase.contains("bread"))
+      case object Pitt  extends ><[String] ((x: String) => x.toLowerCase.contains("pitt"))
 
       val breadPitt = Bread & Pitt
 
@@ -19,53 +19,89 @@ class BoolBoolSpec extends FreeSpec with Matchers {
 
       breadPitt ?^ "pita bread" shouldBe ~^(Bread & Pitt, "pita bread")
     }
+  }
 
-    "Usage example" in {
+  "Usage example" in {
+    // First, we define the precise types that make up our domain/universe/ontology
+    object OurOntology {
+      // `><[T] ((t: T) => Boolean)` is the building block of our boolean type algebra
+      // read `><[Int]` as `narrowing int`
+      case object DbId              extends ><[Int]    (id => 0 <= id && id < 2000000)
+      case object Name              extends ><[String] (_.matches("^[A-Z][a-zA-Z]{1,31}$"))
+      case object BadName           extends ><[String] (_.toLowerCase.contains("badword"))
+      case object ScottishLastName  extends ><[String] (_ startsWith "Mc")
+      case object JewishLastName    extends ><[String] (_ endsWith "berg")
 
-      object ConstraintLibrary {
-        case object DbIdRule extends Narrow[Int] {
-          override val rule = { id: Int =>
-            id >= 0 && id < 2000000
-          }
-        }
-
-        case object NameRule extends Narrow[String] {
-          override val rule: Rule[String] = _.matches("^[A-Z][a-zA-Z]{1,31}$")
-        }
-
-        case object BadNameRule extends Narrow[String] {
-          override val rule: Rule[String] = _.toLowerCase.contains("badword")
-        }
-
-        case object ScottishLastName extends Narrow[String] {
-          override val rule: Rule[String] = _.startsWith("Mc")
-        }
-
-        case object JewishLastName extends Narrow[String] {
-          override val rule: Rule[String] = _ == "Cohen"
-        }
-      }
-
-      import ConstraintLibrary._
-
-      val firstName = NameRule & ~BadNameRule
-      type FirstName = firstName.B ^ firstName.V
-
-      val lastName = firstName & (ScottishLastName | JewishLastName)
-      type LastName = lastName.B ^ lastName.V
-
-      type DbId = DbIdRule.B ^ DbIdRule.V
-
-      case class Person (id: Option[DbId], firstName: FirstName, lastName: LastName)
-
-      val person =
-        (DbIdRule ?^ 123 lift, firstName ?^ "Bilbo" lift, lastName ?^ "McBeggins" lift) match {
-          case (Right(id), Right(firstName), Right(lastName)) => Person(Some(id), firstName, lastName)
-          case _ => throw new Exception
-        }
-
-      println (person)
-      // Person(Some({ 123 ∈ DbIdRule }),{ Bilbo ∈ (NameRule & ~BadNameRule) },{ McBeggins ∈ ((NameRule & ~BadNameRule) & (ScottishLastName | JewishLastName)) })
+      // We use boolean algebra to combine base rules into more complex rules
+      val FirstNameRule = Name & ~BadName
+      val LastNameRule = FirstNameRule & (ScottishLastName | JewishLastName)
     }
+
+    import ?^.DSL._
+    import OurOntology._ // so we can use the convenient ~ operator
+
+    // Our Domain is now ready to be used in ADTs and elsewhere.
+    case class Person (id: DbId.^^, firstName: FirstNameRule.^^, lastName: LastNameRule.^^)
+
+    // We string together the inputs, to form an easily-accessible data structure:
+    // Either (set of failures, tuple of successes)
+    val validatedInput =
+      (DbId      ?^ 123) ~
+      (FirstNameRule ?^ "Bilbo") ~
+      (LastNameRule  ?^ "McBeggins")
+
+    // The tupled form allows easy application to case classes
+    val validPerson = validatedInput map Person.tupled
+
+    // Using the `*` postfix notation, we can access the base types if/when we wish
+    val baseTypes = validPerson map { person =>
+      (person.id*, person.firstName*, person.lastName*)
+    }
+    baseTypes shouldBe Right((123,"Bilbo","McBeggins"))
+
+    // Using toString gives an intuitive peek at the rule algebra
+    //
+    // By default, the `><` type class names get printed out - however users should feel free to override `toString`,
+    // with the caveat that both `equals` and `hashCode` are (mostly) delegated to the `toString` implementation - so
+    // make it unique!
+    validPerson.right.get.toString shouldBe
+      "Person({ 123 ∈ DbId },{ Bilbo ∈ (Name & ~BadName) },{ McBeggins ∈ ((Name & ~BadName) & (ScottishLastName | JewishLastName)) })"
+
+    // Applying an invalid set of inputs accumulates all rules that failed
+    val invalid =
+      (DbId      ?^ -1) ~
+      (FirstNameRule ?^ "Bilbo") ~
+      (LastNameRule  ?^ "Ivanov") map Person.tupled
+
+    // We can access the errors directly
+    invalid shouldBe Left(Set(~^(DbId,-1), ~^(LastNameRule, "Ivanov")))
+  }
+
+  "Generate ~ DSL (copy and paste in ?^.DSL)" ignore {
+
+    def genBs (i: Int) = (1 to i) map { n => s"B$n <: BoolBool[T$n]" } mkString ","
+    def genTs (i: Int) = (1 to i) map { n => s"T$n" } mkString ","
+    def genTup (i: Int) = "(" + ( (1 to i) map { n => s"^[B$n,T$n]"} mkString ",") + ")"
+    def genABC (i: Int) = (('a' to 'z') take i) mkString ","
+    def letter (i: Int) = 'a' + (i-1) toChar
+
+    for (i <- 2 to 21) {
+      val j = i + 1
+      println (
+        s"""
+           |implicit class Tup${i}[${genBs(i)},${genTs(i)}] (v: Either[Set[~^[_,_]], ${genTup(i)}]) {
+           |  def ~ [B$j <: BoolBool[T$j], T$j] (next: ?^[B$j,T$j]): Either[Set[~^[_,_]], ${genTup(j)}] =
+           |    (v, next) match {
+           |      case (Right((${genABC(i)})), ${letter(j)}: ^[B$j,T$j]) => Right((${genABC(j)}))
+           |      case (Left(fails), x) => Left(fails ++ ?^.failAsSet(x))
+           |      case (Right(_), x)    => Left(?^.failAsSet(x))
+           |    }
+           |}
+           |
+       """.stripMargin.trim
+      )
+    }
+
+
   }
 }
